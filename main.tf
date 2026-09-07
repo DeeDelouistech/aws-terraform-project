@@ -167,3 +167,45 @@ output "s3_bucket_name" {
   value       = aws_s3_bucket.recruiter_storage.id
   description = "Name of the S3 storage bucket"
 }
+# 1. IAM Role allowing Lambda to talk to Amazon Bedrock
+resource "aws_iam_role" "ai_lambda_role" {
+  name = "ai_cost_optimizer_lambda_role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "lambda.amazonaws.com"
+      }
+    }]
+  })
+}
+
+# 2. Grant Lambda permissions to invoke Bedrock models
+resource "aws_iam_policy" "bedrock_access" {
+  name = "bedrock_access_policy"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["bedrock:InvokeModel"]
+      Resource = "*"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "attach_bedrock" {
+  role       = aws_iam_role.ai_lambda_role.name
+  policy_arn = aws_iam_policy.bedrock_access.arn
+}
+
+# 3. Serverless Lambda function for AI Insights
+resource "aws_lambda_function" "ai_cost_optimizer" {
+  filename         = "lambda_dummy.zip" # Placeholder for your function package
+  function_name    = "ai_cost_optimizer_function"
+  role             = aws_iam_role.ai_lambda_role.arn
+  handler          = "index.handler"
+  runtime          = "python3.9"
+}
